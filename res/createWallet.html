@@ -1,0 +1,91 @@
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
+<HEAD>
+  <TITLE>Avaloq Block Explorer</TITLE>
+  <style type="text/css">
+    .header {background-color:#004893;min-height:64px;z-index:4;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+    .table {position: relative; min-height: 1px;  padding-left: 15px; padding-right: 15px;}
+
+    table.altrowstable {width:75%; font family: verdana,arial,sans-serif; font-size:16px; color:#333333;	border-width: 1px; border-color: #a9c6c9;	border-collapse: collapse;}
+    table.altrowstable th {	border-width: 1px; padding: 8px; border-style: solid; border-color: #a9c6c9; background-color:#004893;}
+    table.altrowstable td {	border-width: 1px; padding: 8px; border-style: solid;	border-color: #a9c6c9;}
+    .email { width: 50%; }
+    .oddrowcolor {	background-color:#d4e3e5;  }
+    .evenrowcolor { background-color:#c3dde0; }
+    .oddrowcolor:hover {	background-color:#ffffff;  }
+    .evenrowcolor:hover { background-color:#ffffff; }
+  </style>
+
+  <script>
+  var nbLines = 10;
+
+  function addRow() {
+    var table = document.getElementById("studentsTable");
+    var line = table.insertRow(-1);
+    line.insertCell(0).setAttribute("contenteditable", "true");
+    line.insertCell(1).setAttribute("contenteditable", "true");
+    line.insertCell(2).setAttribute("contenteditable", "true").setClassName('eMail');
+    line.cells[0].focus();
+  };
+
+  function submit() {
+    var http = new XMLHttpRequest();
+    var email = document.getElementById("email");
+
+    if (email.value == '') {
+      alert("Please insert an email address!");
+      return;
+    }
+
+    http.open("POST", '/createWallet', true);
+    http.setRequestHeader("Content-type", "application/json");
+    http.onreadystatechange = function()
+    {
+      if (http.readyState == 4) {
+        if (http.status == 401) alert("You are not autorized for this course")
+        else if (http.status == 403) alert("You already have transfered the money to your wallet");
+        else if (http.status == 200) displayResults(JSON.parse(http.response));
+        else alert("Error in submiiting the bitcoin transfer to your account");
+      }
+    };
+
+    var par = {};
+    par["email"] = email.value;
+    http.send(JSON.stringify(par));
+  };
+
+  function displayResults(res) {
+    alert(res);
+    var dispWords = document.getElementById("displayWords");
+    var dispAddr = document.getElementById("displayAddr");
+    var words = document.getElementById("theWords");
+    var addr = document.getElementById("theAddr");
+    words.innerHTML = res.words;
+    addr.innerHTML = res.address;
+    dispWords.style.visibility = 'visible';
+    dispAddr.style.visibility = 'visible';
+  };
+  </script>
+
+</HEAD>
+<BODY BGCOLOR="FFFFFF">
+  <div class="header">
+        <img src="/res/avaloq-logo-white.png" style = "width:142; height:44; margin-top:10; margin-left:20" >
+        <img src="/res/bitcoin explorer.png" style = "height:44; margin-top:10; margin-right:20" align = "right">
+  </div>
+  <div style="margin-top:20;">
+    <span>Enter your eMail address :</span><input type="email" id="email" size=60/>
+    <button type="button" style="float: right;" onclick="submit()">Submit</button>
+  </div>
+
+  <div style = "margin-top: 20; visibility: hidden" id = "displayWords">
+    <h1>Your wallet's mnemonic</h1>
+    <p>These 12 words represent you wallet's private key. Please write them down carefully in the same order to be able to reuse this wallet</p>
+    <h2 id = "theWords"></h2>
+  </div>
+  <div style = "margin-top: 20; visibility: hidden" id = "displayAddr" >
+    <h1>Your bitcoin address</h1>
+    <p>This is your bitcoin address used to receive bitcoins</p>
+    <h2 id = "theAddr"></h2>
+  </div>
+</BODY>
+</HTML>

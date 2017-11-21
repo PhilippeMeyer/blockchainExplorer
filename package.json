@@ -1,0 +1,20 @@
+{
+    "name": "Avaloq_Blockchain_OLT",
+    "version": "0.1.0",
+    "description": "Small tool to manage a bitcoin course",
+    "main": "AvaBlockchainOLT.js",
+    "scripts": {
+        "start": "node AvaBlockchainOLT.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://git.heroku.com/calm-gorge-35408.git"
+    },
+    "dependencies": {
+        "async": "^2.6.0",
+        "bip39": "git+https://github.com/bitcoinjs/bip39.git",
+        "bitcoinjs-lib": "^3.3.0",
+        "body-parser": "^1.18.2",
+        "express": "^4.16.2"
+    }
+}
