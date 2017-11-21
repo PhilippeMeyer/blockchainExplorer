@@ -18,6 +18,7 @@ const rootURL = "http://blockchain.info/blocks?format=json";
 const blockURL = 'http://blockchain.info/block/';
 const addrURL = 'https://blockchain.info/fr/unspent?active=';
 const ws = 'wss://ws.blockchain.info/inv';
+const PORT = process.env.PORT || 5000;
 
 var app = express();
 app.use(bodyParser.json()); // support json encoded bodies
@@ -61,7 +62,7 @@ app.get('/res/:name', function(req, out) {
   out.sendFile(path.join(__dirname + '/res/' + name));
 });
 
-app.listen(8082);
+app.listen(PORT);
 
 function collectUtxo(start, out) {
   //Explore 20 (specified by the BIP44) child addresses from the start. For each retrieve the Utxo
