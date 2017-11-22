@@ -6,7 +6,7 @@
     .table {position: relative; min-height: 1px;  padding-left: 15px; padding-right: 15px;}
     div.section {margin: 20px 20px 20px 20px; background-color:#f5f5f5; border-color:#736c6c; border-width: 1px; border-radius: 4px;}
 
-    table.altrowstable {font family: verdana,arial,sans-serif; font-size:16px; color:#333333;	border-width: 1px; border-color: #a9c6c9;	border-collapse: collapse; cursor: pointer;}
+    table.altrowstable {margin: 20px 20px 20px 20px; font family: verdana,arial,sans-serif; font-size:16px; color:#333333;	border-width: 1px; border-color: #a9c6c9;	border-collapse: collapse; cursor: pointer;}
     table.altrowstable th {	border-width: 1px; padding: 8px; border-style: solid; border-color: #a9c6c9; }
     table.altrowstable td {	border-width: 1px; padding: 8px; border-style: solid;	border-color: #a9c6c9; }
     .oddrowcolor {	background-color:#d4e3e5;  }
@@ -36,6 +36,11 @@
       getBlock(value);
   };
 
+  function txCallback(row){
+      var value = row.getElementsByTagName("td")[0].textContent;
+      //TODO: Display the transaction details
+  };
+
   function getBlock(index) {
     var http = new XMLHttpRequest();
 
@@ -46,18 +51,40 @@
       {
         res = JSON.parse(http.responseText);
         var table = document.getElementById("txList");
+        var div = document.getElementById('displayTx');
         var newTable = document.createElement('tbody');
+
+        //We go through each transaction in the block
         for (var i = 0 ; i < res.tx.length ; i++) {
           var line = newTable.insertRow(-1);
           if (i % 2 == 0) line.className = "evenRowColor";
           else line.className = "oddRowColor";
+
           var date = new Date(res.tx[i].time*1000);
           var datestr = date.toISOString().replace(/T/, ' ').replace(/\..+/, '');
           line.insertCell(0).textContent = String(datestr);
           line.insertCell(1).textContent = String(res.tx[i].hash);
+          //For each transaction we sum the inputs and the outputs
+          var input = 0, output = 0;
+          for (var j = 0 ; j < res.tx[i].inputs.length ; j++) {
+            if (typeof res.tx[i].inputs[j].prev_out != 'undefined') input += res.tx[i].inputs[j].prev_out.value;
+          }
+          for (var j = 0 ; j < res.tx[i].out.length ; j++) {
+            if (typeof res.tx[i].out[j].value != 'undefined') output += res.tx[i].out[j].value;
+          }
+          line.insertCell(2).textContent = String((input/1E8).toFixed(2));
+          line.insertCell(3).textContent = String((output/1E8).toFixed(2));
+          line.onclick = function (row) {
+              return function () {
+                  txCallback(row);
+              };
+          }(line);
+
         }
         table.parentNode.replaceChild(newTable, table);
+        div.style.visibility = 'visible';
         newTable.id = "txList";
+        document.getElementById('numBlock').innerHTML = "Transactions included in block #" + index;
       }
     };
     http.send(null);
@@ -84,11 +111,13 @@
               };
           }(line);
 
-          line.insertCell(0).innerHTML = String(res[i].height);
+          line.insertCell(0).textContent = String(res[i].height);
           line.insertCell(1).textContent = String(res[i].time);
           line.insertCell(2).textContent = String(res[i].nbTx);
           line.insertCell(3).textContent = String(res[i].amount);
           line.insertCell(4).textContent = String(res[i].fees);
+          line.insertCell(5).textContent = String(res[i].size);
+          line.insertCell(6).textContent = String(res[i].hash);
         }
       };
     }
@@ -99,7 +128,7 @@
 
   blcks.onopen = function() {blcks.send(JSON.stringify({"op":"blocks_sub"}));};
   blcks.onmessage = function(msg) {
-    console.log(msg);
+    console.log(msg); //TODO: implement a refresh of the block table as a new block has been mined
   };
 
   </script>
@@ -113,12 +142,13 @@
   <div class = "section">
     <H1> Last Mined Blocks </H1>
     <table id="blockTable" class="altrowstable">
-      <tr><th># Block</th><th>Date</th><th>Nb Tx</th><th>Amount</th><th>Fees</th></tr>
+      <tr><th># Block</th><th>Date</th><th>Nb Tx</th><th>Amount</th><th>Fees</th><th>Size</th><th>Hash</th></tr>
     </table>
   </div>
-  <div class = "section">
+  <div class = "section" style= "visibility: hidden" id = "displayTx">
+    <h1 id = "numBlock"></h1>
     <table id="txTable" class="altrowstable">
-      <thead><th>Date</th><th>Transaction Id</th></thead>
+      <thead><th>Date</th><th>Transaction Id</th><th>Input</th><th>Output</th></thead>
       <tbody id = "txList"></tbody>
     </table>
   </div>

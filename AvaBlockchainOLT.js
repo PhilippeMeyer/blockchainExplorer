@@ -7,6 +7,7 @@ const async = require('async');
 var bodyParser = require('body-parser');
 var bip39 = require('bip39');
 var bitcoin = require("bitcoinjs-lib");
+var WebSocketClient = require('websocket').client;
 
 var Config = [];                   //Contains all the parameters for all the courses: the bitcoin account, the amount and the attendees
 var BitcoinNode;                  //Bitcoin Wallet from where the coins are dispatched
@@ -23,6 +24,34 @@ const addrURL   = 'https://blockchain.info/fr/unspent?active=';
 const ws        = 'wss://ws.blockchain.info/inv';
 const PORT      = process.env.PORT || 5000;
 const LINES     = 10;
+
+var client = new WebSocketClient();
+
+client.on('connectFailed', function(error) {
+    console.log('Connect Error: ' + error.toString());
+});
+
+client.on('connect', function(connection) {
+    console.log('WebSocket Client Connected');
+    connection.on('error', function(error) {
+        console.log("Connection Error: " + error.toString());
+    });
+    connection.on('close', function() {
+        console.log('WS Connection Closed');
+    });
+    connection.on('message', function(message) {
+        if (message.type === 'utf8') {
+          console.log("New block received")
+          res = JSON.parse(message.utf8Data);
+          fetchBlock(res.hash);
+        }
+    });
+
+    if (connection.connected) { connection.send(JSON.stringify({"op":"blocks_sub"}));}
+});
+
+client.connect(ws, null);
+
 
 var app = express();
 app.use(bodyParser.json()); // support json encoded bodies
@@ -101,7 +130,7 @@ app.get('/lastBlocks/:num', function(req, out) {
     val = computeBlock(block);
     date = new Date(block.time*1000);
     datestr = date.toISOString().replace(/T/, ' ').replace(/\..+/, '');
-    tbl.push({"row" : i, "height" : String(block.height), "amount" : (val.output/1E8).toFixed(2), "fees": (val.fees/1E8).toFixed(2), "time": datestr, "nbTx": block.n_tx});
+    tbl.push({"row" : i, "height" : String(block.height), "amount" : (val.output/1E8).toFixed(2), "fees": (val.fees/1E8).toFixed(2), "time": datestr, "nbTx": block.n_tx, "size": block.size, "hash": block.hash});
   }
   out.status(200).json(tbl).end();
 });
