@@ -8,42 +8,54 @@ var bodyParser = require('body-parser');
 var bip39 = require('bip39');
 var bitcoin = require("bitcoinjs-lib");
 
-var params;                       //Contains all the parameters: the bitcoin account, the amount and the attendees
-var bitcoinNode;                  //Bitcoin Wallet from where the coins are dispatched
+var Config = [];                   //Contains all the parameters for all the courses: the bitcoin account, the amount and the attendees
+var BitcoinNode;                  //Bitcoin Wallet from where the coins are dispatched
 var network = bitcoin.networks.bitcoin; //The network used for the transactions
-var utxo = [];                    //Stores the unspent transactions on the wallet
-var account;                      //The BIP44 account in use for this session
+var Utxo = [];                    //Stores the unspent transactions on the wallet
+var Account;                      //The BIP44 account in use for this session
+var CacheHashTbl = new Map();     //Map containing the hashes of the retrieved blocks
+var CacheHeightTbl = new Map();   //Map containing the Heights of the retrieved blocks
+var CacheResults = [];            //Array of all the retrieved blocks
 
-const rootURL = "http://blockchain.info/blocks?format=json";
-const blockURL = 'http://blockchain.info/block/';
-const addrURL = 'https://blockchain.info/fr/unspent?active=';
-const ws = 'wss://ws.blockchain.info/inv';
-const PORT = process.env.PORT || 5000;
+const rootURL   = "http://blockchain.info/blocks?format=json";
+const blockURL  = 'http://blockchain.info/block/';
+const addrURL   = 'https://blockchain.info/fr/unspent?active=';
+const ws        = 'wss://ws.blockchain.info/inv';
+const PORT      = process.env.PORT || 5000;
+const LINES     = 10;
 
 var app = express();
 app.use(bodyParser.json()); // support json encoded bodies
 app.use(bodyParser.urlencoded({ extended: true }));
 
-//fetchBlocks();
-
-app.get('/', function(req, out) {
-  console.log("root");
-  //fetchBlocks();
-  out.sendFile(path.join(__dirname + '/res/index.html'));
-});
+fetchBlocks();
+loadConfig();
 
 app.get('/favicon.ico', function(req, out) {
-  console.log("favicon");
+  console.log("favicon.ico");
   out.sendFile(path.join(__dirname + '/res/favicon.ico'));
 });
 
-app.post('/parameters', function(req, out) {
+app.get('/', function(req, out) {
+  console.log("root");
+  out.sendFile(path.join(__dirname + '/res/index.html'));
+});
+
+app.get('/:name', function(req, out) {
+  console.log("root : " + req.params.name);
+  if (req.params.name == '') out.sendFile(path.join(__dirname + '/res/index.html'));
+  else out.sendFile(path.join(__dirname + '/res/' + req.params.name + '.html'));
+});
+
+app.post('/post/createCourse', function(req, out) {
+  //  Create and store a new course : the name and the dates are sent and the Course ID is sent as a response
+  //
   //  Receive all the parameters for the course:
   //  + the list of firstnames + names + email addresses of the attendees
   //  + the private key of the address containing the bitcoins we are going to dispatch (WIP)
   //  + the amount of money to be transfered to each attendee
   // these parameters will be stored in memory in the global variable params
-  console.log("parameters");
+  console.log("createCourse");
   params = req.body;
 
   if (bip39.validateMnemonic(params.address) == false) {
@@ -51,9 +63,57 @@ app.post('/parameters', function(req, out) {
     return;
   }
 
+  Config.push(params);
+  saveConfig();
+  out.status(200).json({'courseID' : Config.length});
+
+});
+
+app.post('/post/distributeCoins', function(req, out) {
+  // Pre-allocate the funds to the students, moving coins to specific address.
+  // Later on the students will trigger a transaction to move those funds to their own addresses
+  // The parameters received are the same as for the createCourse call with additionnally the courseID
+  console.log("distributeCoins");
+  params = req.body;
+
+  if (params.courseID == null) {
+    out.status(404).end();
+    return;
+  }
+  if (bip39.validateMnemonic(params.address) == false) {
+    out.status(403).end();
+    return;
+  }
+
+  Config[params.courseID] = params;
   var seed = bip39.mnemonicToSeed(params.address);
-  bitcoinNode = bitcoin.HDNode.fromSeedBuffer(seed);
-  collectUtxo(0, out);    //collect all the utxo and pre-allocate the coins to the students
+  BitcoinNode = bitcoin.HDNode.fromSeedBuffer(seed);
+  collectUtxo(0, out, params.courseID);    //collect all the utxo and pre-allocate the coins to the students
+});
+
+app.get('/lastBlocks/:num', function(req, out) {
+  console.log("lastBlocks");
+  num = parseInt(req.params.num);
+  var tbl = [];
+
+  for (var i = 0 ; (i < num) && (i < CacheResults.length) ; i++) {
+    block = CacheResults[i];
+    val = computeBlock(block);
+    date = new Date(block.time*1000);
+    datestr = date.toISOString().replace(/T/, ' ').replace(/\..+/, '');
+    tbl.push({"row" : i, "height" : String(block.height), "amount" : (val.output/1E8).toFixed(2), "fees": (val.fees/1E8).toFixed(2), "time": datestr, "nbTx": block.n_tx});
+  }
+  out.status(200).json(tbl).end();
+});
+
+app.get('/getBlock/:num', function(req, out) {
+  console.log("getBlock");
+  num = parseInt(req.params.num);
+
+  block = CacheHeightTbl.get(num);
+
+  if (block == undefined) out.status(404).end();
+  else out.status(200).json(block).end();
 });
 
 app.get('/res/:name', function(req, out) {
@@ -64,14 +124,24 @@ app.get('/res/:name', function(req, out) {
 
 app.listen(PORT);
 
-function collectUtxo(start, out) {
+function loadConfig(){
+  //TODO: Load the config from a file where all the informations are stored (Json dump of the Config object)
+  return;
+}
+
+function saveConfig() {
+  //TODO: save in json in a file the Config object which contains the information about all the courses
+  return;
+}
+
+function collectUtxo(start, out, courseID) {
   //Explore 20 (specified by the BIP44) child addresses from the start. For each retrieve the Utxo
   //If there are still utxo on continue exploring
   //When this is done pre allocate the funds to the different address for the students
   //Firt build an array of the different addresses
   var child = [];
   for (var i = 0 ; i < 20 ; i++) { //We scan BIP44 account 0 where the funds are arriving
-    child[i] = bitcoinNode.deriveHardened(44).deriveHardened(0).deriveHardened(0).derive(0).derive(i);
+    child[i] = BitcoinNode.deriveHardened(44).deriveHardened(0).deriveHardened(0).derive(0).derive(i);
   }
   //Call the http request asynchronously for each address
   async.map(child, function(addr, callback) {
@@ -90,15 +160,15 @@ function collectUtxo(start, out) {
       if (err) { return console.log(err); }
       //retrieving the addresses has been successfull -> strore the different addresses and their Utxo
       processUtxo(results);
-      if (typeof results[results.length -1].utxo.unspent_outputs != 'undefined') collectUtxo(start + 20, out); //All the explored addresses have utxo, let's continue
-      else return(allocateAmounts(out)); //All the utxo have been retrieved. Now preallocate the funds to the students
+      if (typeof results[results.length -1].utxo.unspent_outputs != 'undefined') collectUtxo(start + 20, out, courseID); //All the explored addresses have utxo, let's continue
+      else return(allocateAmounts(out, courseID)); //All the utxo have been retrieved. Now preallocate the funds to the students
   });
 }
 
-function allocateAmounts(out) {
+function allocateAmounts(out, courseID) {
   //All the utxo from the Avaloq's wallet have been retrieved and stored in the global variable Utxo
   //Now we are going to pre allocate the funds to each students moving the money to different addresses for each student inside the Wallet
-  account = findFreeAccount();
+  Account = findFreeAccount();
   var nb = params.students.length;        //Nb students
   var amount = params.amount * 100000;    //From mBitcoin to satoshis
   var fees = params.fees * (200 + (50 * nb));   //TODO: fees evalution to be improved using the tranasaction length
@@ -110,24 +180,25 @@ function allocateAmounts(out) {
   var output = [];
   var sum = 0;
   for (i = 0 ; sum < total ; i++) {
-    sum += utxo[i].amount;
-    txb.addInput(utxo[i].hash, 0); // previous transaction output
-    output.push({'in_out': 'in', 'address': utxo[i].address, 'tx': utxo[i].hash, 'amount': utxo[i].amount});
+    sum += Utxo[i].amount;
+    txb.addInput(Utxo[i].hash, 0); // previous transaction output
+    output.push({'in_out': 'in', 'address': Utxo[i].address, 'tx': Utxo[i].hash, 'amount': Utxo[i].amount});
   }
 
   var child;
   for (var i = 0 ; i < nb ; i++) {
-    child = bitcoinNode.deriveHardened(44).deriveHardened(0).deriveHardened(account).derive(0).derive(i);
+    child = BitcoinNode.deriveHardened(44).deriveHardened(0).deriveHardened(Account).derive(0).derive(i);
     txb.addOutput(child.getAddress(), amount + unitFees);
     output.push({'in_out': 'out', 'address': child.getAddress(), 'tx': '', 'amount': amount + unitFees});
   }
-  txb.addOutput(utxo[0].address, sum - total);
-  output.push({'in_out': 'out', 'address': utxo[0].address, 'tx': '', 'amount': sum - total});
+  txb.addOutput(Utxo[0].address, sum - total);
+  output.push({'in_out': 'out', 'address': Utxo[0].address, 'tx': '', 'amount': sum - total});
 
-  txb.sign(0, bitcoinNode);
-  console.log(txb.build().toHex());
-  console.log(output);
-  if (out != null) { console.log('retour'); out.status(200).json(output).end();}
+  txb.sign(0, BitcoinNode);
+  console.log(txb.build().toHex());           //TODO: Execute the real transaction on the network
+  Config[courseID]['transactions'] = output;
+  out.status(200).json(output).end();
+  saveConfig();
 }
 
 function findFreeAccount() {
@@ -145,6 +216,84 @@ function processUtxo(res) {
     if (typeof res[i].utxo.unspent_outputs == 'undefined') break;
 
     for (var j = 0 ; j < res[i].utxo.unspent_outputs.length ; j++)
-      utxo.push({ 'hash' : res[i].utxo.unspent_outputs[j].tx_hash, 'amount' : res[i].utxo.unspent_outputs[j].value, 'address' : res[i].address});
+      Utxo.push({ 'hash' : res[i].utxo.unspent_outputs[j].tx_hash, 'amount' : res[i].utxo.unspent_outputs[j].value, 'address' : res[i].address});
   }
+}
+
+function fetchBlocks(){
+  var hash = [];
+  //Get the list of the last blocks
+  console.log('fetchBlocks');
+
+  request(rootURL, { json: true }, (err, res, body) => {
+    if (err) { return console.log(err); }
+
+    console.log("Nb blocks : " + body.blocks.length);
+    for (i = 0 ; i < LINES && i < body.blocks.length; i++) {
+      hash[i] = body.blocks[i].hash;
+    }
+
+    async.map(hash, function(name, callback) {
+      if (CacheHashTbl.has(name)) return(null, null);
+
+      myURL = blockURL + String(name) + "?format=json"
+
+      request(myURL, { json: true }, (err, res, body) => {
+        if (err) { return callback(err); }
+        storeBlock(body);
+        return callback(null, body);
+      });
+    }, function(err, results) {
+        if (err) { return console.log(err); }
+    });
+  });
+}
+
+function fetchBlock(hash){
+  console.log('fetchBlock');
+
+  if (CacheHashTbl.has(hash)) return;
+
+  request(blockURL + String(hash) + '?format=json', { json: true }, (err, res, body) => {
+    if (err) { return console.log(err); }
+
+    CacheResults.push(body);
+    CacheResults.sort(function(a,b) {return(b.height - a.height);});
+    CacheHashTbl.set(body.hash, body);
+    CacheHeightTbl.set(body.height, body);
+  });
+}
+
+function storeBlock(block){
+  console.log('storeBlock');
+
+  CacheResults.push(block);
+  CacheResults.sort(function(a,b) {return(b.height - a.height);});
+  CacheHashTbl.set(block.hash, block);
+  CacheHeightTbl.set(block.height, block);
+}
+
+function computeBlock(block){
+  var fees = 0;
+  var sumInput = 0;
+  var sumOutput = 0;
+
+  for (var i = 0 ; i < block.tx.length ; i++) {
+    input = 0;
+    output = 0;
+    reward = false;
+
+    for (var j = 0 ; j < block.tx[i].inputs.length ; j++) {
+      reward = false;
+      if (typeof block.tx[i].inputs[j].prev_out != 'undefined') input += block.tx[i].inputs[j].prev_out.value;
+      else reward = true;
+    }
+    for (var j = 0 ; (j < block.tx[i].out.length) && !reward ; j++) {
+      if (typeof block.tx[i].out[j].value != 'undefined') output += block.tx[i].out[j].value;
+    }
+    fees += input - output;
+    sumInput += input;
+    sumOutput += output;
+  }
+  return({"input": sumInput, "output": sumOutput, "fees": fees});
 }

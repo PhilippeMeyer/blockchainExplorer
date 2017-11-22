@@ -4,6 +4,7 @@
   <style type="text/css">
     .header {background-color:#004893;min-height:64px;z-index:4;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
     .table {position: relative; min-height: 1px;  padding-left: 15px; padding-right: 15px;}
+    div.section {margin: 20px 20px 20px 20px; background-color:#f5f5f5; border-color:#736c6c; border-width: 1px; border-radius: 4px;}
 
     table.altrowstable {font family: verdana,arial,sans-serif; font-size:16px; color:#333333;	border-width: 1px; border-color: #a9c6c9;	border-collapse: collapse; cursor: pointer;}
     table.altrowstable th {	border-width: 1px; padding: 8px; border-style: solid; border-color: #a9c6c9; }
@@ -31,9 +32,36 @@
   };
 
   function lineCallback(row){
-      var value = row.getElementsByTagName("td")[0].innerHTML;
-      alert(value);
+      var value = row.getElementsByTagName("td")[0].textContent;
+      getBlock(value);
   };
+
+  function getBlock(index) {
+    var http = new XMLHttpRequest();
+
+    http.open("GET", 'getBlock/' + index, true);
+    http.onreadystatechange = function()
+    {
+      if (http.readyState == 4 && http.status == 200)
+      {
+        res = JSON.parse(http.responseText);
+        var table = document.getElementById("txList");
+        var newTable = document.createElement('tbody');
+        for (var i = 0 ; i < res.tx.length ; i++) {
+          var line = newTable.insertRow(-1);
+          if (i % 2 == 0) line.className = "evenRowColor";
+          else line.className = "oddRowColor";
+          var date = new Date(res.tx[i].time*1000);
+          var datestr = date.toISOString().replace(/T/, ' ').replace(/\..+/, '');
+          line.insertCell(0).textContent = String(datestr);
+          line.insertCell(1).textContent = String(res.tx[i].hash);
+        }
+        table.parentNode.replaceChild(newTable, table);
+        newTable.id = "txList";
+      }
+    };
+    http.send(null);
+  }
 
   function myFunction() {
     var table = document.getElementById("blockTable");
@@ -82,10 +110,16 @@
         <img src="res/avaloq-logo-white.png" style = "width:142; height:44; margin-top:10; margin-left:20" >
         <img src="res/bitcoin explorer.png" style = "height:44; margin-top:10; margin-right:20" align = "right">
   </div>
-  <div style="margin-top: 20"><span><b>LAST BLOCKS</b></span></div>
-  <div style="margin-top: 20">
+  <div class = "section">
+    <H1> Last Mined Blocks </H1>
     <table id="blockTable" class="altrowstable">
       <tr><th># Block</th><th>Date</th><th>Nb Tx</th><th>Amount</th><th>Fees</th></tr>
+    </table>
+  </div>
+  <div class = "section">
+    <table id="txTable" class="altrowstable">
+      <thead><th>Date</th><th>Transaction Id</th></thead>
+      <tbody id = "txList"></tbody>
     </table>
   </div>
 </BODY>

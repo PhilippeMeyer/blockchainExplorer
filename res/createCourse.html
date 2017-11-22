@@ -18,8 +18,12 @@
 
   <script>
   var http;
+  var CourseID = 0;
 
-  function createCourse() {
+  function manageCourse(url, callback) {
+    var start = document.getElementById("startDate"); //TODO: Validation checks on the date
+    var end = document.getElementById("endDate");
+    var course = document.getElementById("courseName");
     var table = document.getElementById("studentsTable");
     var wip = document.getElementById("wip");
     var amountFld = document.getElementById("amount");
@@ -28,7 +32,7 @@
     var fees = parseInt(feesFld.value);
     if (isNaN(amount)) { alert("Incorrect amount"); return; }
     if (isNaN(fees))  { alert("Incorrect fees"); return; }
-    if ((wip.value == '') || (amount.value == '')) {
+    if (wip.value == ''){
       alert("Please insert the bitcoin parameters !");
       return;
     }
@@ -38,13 +42,13 @@
     }
 
     http = new XMLHttpRequest();
-    http.open("POST", '/parameters', true);
+    http.open("POST", url, true);
     http.setRequestHeader("Content-type", "application/json");
     http.onreadystatechange = function()
     {
       if (http.readyState == 4) {
-        if (http.status == 200) displayResults(JSON.parse(http.response));
-        else alert("NoK");
+        if (http.status == 200) callback(JSON.parse(http.response));
+        else alert("NoK"); //TODO: present more detailled error message depending on the error code
       }
     };
 
@@ -53,6 +57,10 @@
     par["address"] = wip.value;
     par["amount"] = amount;
     par["fees"] = fees;
+    par['startDate'] = start.value;
+    par['endDate'] = end.value;
+    par['name'] = course.value;
+    if (CourseID != 0) par['courseID'] = CourseID;
 
     for (i = 1 ; i < table.rows.length ; i++) {
       obj = {};
@@ -79,7 +87,18 @@
     dispDiv.style.visibility = 'visible';
   };
 
-  var nbLines = 10;
+  function createCourse(res) {
+    manageCourse('/post/createCourse', displayCourseID);
+  };
+  function distributeCoins(res) {
+    manageCourse('/post/distributeCoins', displayResults);
+  };
+  function displayCourseID(res) {
+    CourseID = res.courseID;
+    var cID = document.getElementById("cID");
+    document.getElementById('distributeBtn').disabled = false;
+    cID.textContent = String(res.courseID);
+  };
 
   function addRow() {
     var table = document.getElementById("studentsTable");
@@ -87,10 +106,9 @@
     line.insertCell(0).setAttribute("contenteditable", "true");
     line.insertCell(1).setAttribute("contenteditable", "true");
     line.insertCell(2).setAttribute("contenteditable", "true")
-    line.cells[2].setClassName('eMail');
+    //line.cells[2].setClassName('eMail');    //TODO: Change this as it does not work
     line.cells[0].focus();
   };
-
   </script>
 
 </HEAD>
@@ -99,33 +117,41 @@
         <img src="/res/avaloq-logo-white.png" style = "width:142; height:44; margin-top:10; margin-left:20" >
         <img src="/res/bitcoin explorer.png" style = "height:44; margin-top:10; margin-right:20" align = "right">
   </div>
+
   <div class="section">
-    <button type="button" style="float: right;" onclick="createCourse()">Create New Course</button>
-    <h1>Course Parameters</h1>
-    <table style="margin: 20px 20px 20px 20px;">
-      <tr><td>Course name </td><td><input type="text" id="courseName" size=50/></td></tr>
-      <tr><td>Start Date </td><td><input type="date" id="startDate" size=10/></td></tr>
-      <tr><td>End Date </td><td><input type="date" id="endDate" size=10/></td></tr>
-    </table>
-  </div>
-  <div class="section">
-    <span><b>BITCOIN Information</b></span>
-    <table>
-      <tr><td>Private Key : </td><td><input type="text" id="wip" size=52/></td></tr>
-      <tr><td>Amount to distribute (in mBitcoins) :</td><td><input type="number" id="amount" value="4"/></td></tr>
-      <tr><td>Fees for the transfert (in satoshis/per byte) :</td><td><input type="number" id="fees" value="160"/></td></tr>
-    </table>
+    <h1>Create a new course</h1>
+    <button type="button" onclick="createCourse()">Create New Course</button>
+    <button type="button" disabled onclick="distributeCoins()" id = "distributeBtn">Distribute Coins</button>
   </div>
 
   <div class="section">
-    <span><b>STUDENTS Attending the course</b></span>
-    <button type="button" onclick="addRow()" style="margin-left:50;">Add Student</button>
-  </div>
-  <div style="margin: 20; height:33%; overflow-y: auto; border-width: 10;">
-    <table id="studentsTable" class="altrowstable">
-      <tr><th>Firstname</th><th>LastName</th><th>eMail</th></tr>
-      <tr><td contenteditable="true"/><td contenteditable="true"/><td contenteditable="true" class="email"/></tr>
-    </table>
+    <div class="section">
+      <h2>Course Parameters</h2>
+      <table style="margin: 20px 20px 20px 20px;">
+        <tr><td>Course name </td><td><input type="text" id="courseName" size=50/></td></tr>
+        <tr><td>Start Date </td><td><input type="date" id="startDate" size=10/></td><td>Course ID : </td><td id=cID></td></tr>
+        <tr><td>End Date </td><td><input type="date" id="endDate" size=10/></td></tr>
+      </table>
+    </div>
+    <div class="section">
+      <h2>BITCOIN Information</h2>
+      <table>
+        <tr><td>Private Key : </td><td><input type="text" id="wip" size=80/></td></tr>
+        <tr><td>Amount to distribute (in mBitcoins) :</td><td><input type="number" id="amount" value="4"/></td></tr>
+        <tr><td>Fees for the transfert (in satoshis/per byte) :</td><td><input type="number" id="fees" value="160"/></td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <span><b>STUDENTS Attending the course</b></span>
+      <button type="button" onclick="addRow()" style="margin-left:50;">Add Student</button>
+    </div>
+    <div style="margin: 20; height:33%; overflow-y: auto; border-width: 10;">
+      <table id="studentsTable" class="altrowstable">
+        <tr><th>Firstname</th><th>LastName</th><th>eMail</th></tr>
+        <tr><td contenteditable="true"/><td contenteditable="true"/><td contenteditable="true" class="email"/></tr>
+      </table>
+    </div>
   </div>
 
   <div style = "margin-top: 20; visibility: hidden" id = "displayTx">

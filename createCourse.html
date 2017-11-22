@@ -20,25 +20,12 @@
   var http;
 
   function createCourse() {
-    var table = document.getElementById("studentsTable");
-    var wip = document.getElementById("wip");
-    var amountFld = document.getElementById("amount");
-    var feesFld = document.getElementById("fees");
-    var amount = parseInt(amountFld.value);
-    var fees = parseInt(feesFld.value);
-    if (isNaN(amount)) { alert("Incorrect amount"); return; }
-    if (isNaN(fees))  { alert("Incorrect fees"); return; }
-    if ((wip.value == '') || (amount.value == '')) {
-      alert("Please insert the bitcoin parameters !");
-      return;
-    }
-    if ((table.rows.length == 2) && (table.rows[1].cells[2].textContent == '')) {
-      alert("Please insert the students attending the training !");
-      return;
-    }
+    var start = document.getElementById("startDate");
+    var end = document.getElementById("endDate");
+    var course = document.getElementById("courseName");
 
     http = new XMLHttpRequest();
-    http.open("POST", '/parameters', true);
+    http.open("POST", '/createCoursePost', true);
     http.setRequestHeader("Content-type", "application/json");
     http.onreadystatechange = function()
     {
@@ -47,6 +34,34 @@
         else alert("NoK");
       }
     };
+    function submit() {
+      var table = document.getElementById("studentsTable");
+      var wip = document.getElementById("wip");
+      var amountFld = document.getElementById("amount");
+      var feesFld = document.getElementById("fees");
+      var amount = parseInt(amountFld.value);
+      var fees = parseInt(feesFld.value);
+      if (isNaN(amount)) { alert("Incorrect amount"); return; }
+      if (isNaN(fees))  { alert("Incorrect fees"); return; }
+      if ((wip.value == '') || (amount.value == '')) {
+        alert("Please insert the bitcoin parameters !");
+        return;
+      }
+      if ((table.rows.length == 2) && (table.rows[1].cells[2].textContent == '')) {
+        alert("Please insert the students attending the training !");
+        return;
+      }
+
+      http = new XMLHttpRequest();
+      http.open("POST", '/parameters', true);
+      http.setRequestHeader("Content-type", "application/json");
+      http.onreadystatechange = function()
+      {
+        if (http.readyState == 4) {
+          if (http.status == 200) displayResults(JSON.parse(http.response));
+          else alert("NoK");
+        }
+      };
 
     var par = {};
     var data = [];
@@ -109,7 +124,7 @@
     </table>
   </div>
   <div class="section">
-    <span><b>BITCOIN Information</b></span>
+    <h1>BITCOIN Information</h1>
     <table>
       <tr><td>Private Key : </td><td><input type="text" id="wip" size=52/></td></tr>
       <tr><td>Amount to distribute (in mBitcoins) :</td><td><input type="number" id="amount" value="4"/></td></tr>
