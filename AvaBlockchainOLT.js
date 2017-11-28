@@ -43,7 +43,7 @@ client.on('connect', function(connection) {
         if (message.type === 'utf8') {
           console.log("New block received")
           res = JSON.parse(message.utf8Data);
-          fetchBlock(res.hash);
+          fetchBlock(res.x.hash);
         }
     });
 
@@ -62,6 +62,8 @@ app.use("/js", express.static(__dirname + '/js'));
 app.use("/css", express.static(__dirname + '/css'));
 app.use("/html", express.static(__dirname + '/html'));
 
+app.use(express.static('public'));
+
 fetchBlocks();
 loadConfig();
 
@@ -74,10 +76,13 @@ app.get('/', function(req, out) {
   console.log("root");
   out.sendFile(path.join(__dirname + '/html/index.html'));
 });
-
-app.get('/:name', function(req, out) {
-  console.log("root : " + req.params.name);
-  out.sendFile(path.join(__dirname + req.params.name));
+app.get('/createCourse', function(req, out) {
+  console.log("createCourse");
+  out.sendFile(path.join(__dirname + '/html/createCourse.html'));
+});
+app.get('/createWallet', function(req, out) {
+  console.log("createWallet");
+  out.sendFile(path.join(__dirname + '/html/createWallet.html'));
 });
 
 app.post('/post/createCourse', function(req, out) {
@@ -151,25 +156,41 @@ app.get('/getBlock/:num', function(req, out) {
   if (block == undefined) out.status(404).end();
   else out.status(200).json(block).end();
 });
-/*
-app.get('/res/:name', function(req, out) {
-  name = req.params.name;
-  console.log(name);
-  out.sendFile(path.join(__dirname + '/res/' + name));
-});
 
-app.get('/js/:name', function(req, out) {
-  name = req.params.name;
-  console.log(name);
-  out.sendFile(path.join(__dirname + '/js/' + name));
-});
+app.post('/post/createWallet', function(req, out) {
+  // Create a wallet and a public bitcoin address associated to the wallet. Transfer of the pre allocated amont of money will be trigered
+  // the transaction details will be displayed. The student could see how the transaction is progressing getting validated ...
+  // another address will be created so that the sytudent can transfer money from one address to the other.
+  //The input is the student's email address
+  console.log("createWallet - post");
+  email = req.body.email;
+  var find, courseID;
+  find = -1;
+  courseID = -1;
+  for (var j = 0 ; j < Config.length ; j++) {
+    for (var i = 0 ; i < Config[j].students.length ; i++) { //search dor the email address in the course parameters
+      if (Config[j].students[i].email == email) { find = i; courseID = j; }
+    }
+  }
+  if (find == -1) { out.status(401).end(); return; }  //The student does not exist in the list sent by the organiser
 
-app.get('/css/:name', function(req, out) {
-  name = req.params.name;
-  console.log(name);
-  out.sendFile(path.join(__dirname + '/css/' + name));
+  if (typeof Config[courseID].students[find].sent != 'undefined') {   //The money has already been sent. Too Bad! Nice try!
+    out.status(403).end();
+    return;
+  }
+
+  Config[courseID].students[find]['sent'] = true;
+  var words = bip39.generateMnemonic(128);
+  var seed = bip39.mnemonicToSeed(words);
+  var node = bitcoin.HDNode.fromSeedBuffer(seed);
+  var child = node.derivePath("m/44'/0'/0'/0/0")
+  var address = child.getAddress();
+  ret = {};
+  ret['words'] = words;
+  ret['address'] = address;
+  ret['tx_hash'] = processPayment(address, courseID);
+  out.status(200).json(ret).end();
 });
-*/
 
 app.listen(PORT);
 
@@ -181,6 +202,28 @@ function loadConfig(){
 function saveConfig() {
   //TODO: save in json in a file the Config object which contains the information about all the courses
   return;
+}
+
+function processPayment(addr, courseID) {
+    //TODO: transfer the predefined amount of bitcoin from the Avaloq's wallet to the student's address
+    // Each utxo should be checked to verify if the remaining amount is enough to transfer the defined amount to the students
+    // If not, multiple utx should be used
+    // Then the transaction is created and signed from Avaloq's wallet
+    var txb = new bitcoin.TransactionBuilder(network, 20000);
+    var amount = Config[courseID].amount * 100000; //convert mBitcoins in Satoshis
+    var fees = Config[courseID].fees * 240;     //TODO: have a better estimation of the transaction size estimated here to 240 bytes
+
+    //Go through the different utxo from the different addresses and build up the input
+    var sum = 0;
+    for (i = 0 ; sum < amount ; i++) {
+      sum += Utxo[i].amount;
+      txb.addInput(Utxo[i].hash, 0); // previous transaction output
+    }
+
+    txb.addOutput(addr, amount);
+    txb.addOutput(Utxo[0].address, sum - amount - fees);
+    txb.sign(0, BitcoinNode);
+    console.log(txb.build().toHex());
 }
 
 function collectUtxo(start, out, courseID) {
@@ -277,7 +320,6 @@ function fetchBlocks(){
   request(rootURL, { json: true }, (err, res, body) => {
     if (err) { return console.log(err); }
 
-    console.log("Nb blocks : " + body.blocks.length);
     for (i = 0 ; i < LINES && i < body.blocks.length; i++) {
       hash[i] = body.blocks[i].hash;
     }
@@ -299,17 +341,14 @@ function fetchBlocks(){
 }
 
 function fetchBlock(hash){
-  console.log('fetchBlock');
+  console.log('fetchBlock : ' + hash);
 
   if (CacheHashTbl.has(hash)) return;
 
   request(blockURL + String(hash) + '?format=json', { json: true }, (err, res, body) => {
-    if (err) { return console.log(err); }
+    if (err) { console.log(err); return;}
 
-    CacheResults.push(body);
-    CacheResults.sort(function(a,b) {return(b.height - a.height);});
-    CacheHashTbl.set(body.hash, body);
-    CacheHeightTbl.set(body.height, body);
+    storeBlock(body);
   });
 }
 

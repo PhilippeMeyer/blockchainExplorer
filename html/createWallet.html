@@ -1,5 +1,13 @@
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
-<HEAD>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/bootstrap-theme.min.css">
+
   <TITLE>Avaloq Block Explorer</TITLE>
   <style type="text/css">
     .header {background-color:#004893;min-height:64px;z-index:4;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
@@ -14,6 +22,9 @@
     .oddrowcolor:hover {	background-color:#ffffff;  }
     .evenrowcolor:hover { background-color:#ffffff; }
   </style>
+
+  <script src="/js/jquery-3.2.1.min.js"></script>
+  <script src="/js/bootstrap.min.js"></script>
 
   <script>
   var nbLines = 10;
@@ -36,7 +47,7 @@
       return;
     }
 
-    http.open("POST", '/createWallet', true);
+    http.open("POST", '/post/createWallet', true);
     http.setRequestHeader("Content-type", "application/json");
     http.onreadystatechange = function()
     {
@@ -68,24 +79,37 @@
 
 </HEAD>
 <BODY BGCOLOR="FFFFFF">
-  <div class="header">
-        <img src="/res/avaloq-logo-white.png" style = "width:142; height:44; margin-top:10; margin-left:20" >
-        <img src="/res/bitcoin explorer.png" style = "height:44; margin-top:10; margin-right:20" align = "right">
-  </div>
-  <div style="margin-top:20;">
-    <span>Enter your eMail address :</span><input type="email" id="email" size=60/>
-    <button type="button" style="float: right;" onclick="submit()">Submit</button>
-  </div>
+  <div class = "container">
+    <nav class=" nav navbar navbar-default navbar-static-top">
+      <div class="container">
+        <img src="/res/avaloq-logo-blue.png"  height="35" vspace="10" style="display: inline-block;">
+        <img src="/res/bitcoin explorer.png" height="35" vspace="10" hspace="50" align = "right">
+      </div>
+    </nav>
 
-  <div style = "margin-top: 20; visibility: hidden" id = "displayWords">
-    <h1>Your wallet's mnemonic</h1>
-    <p>These 12 words represent you wallet's private key. Please write them down carefully in the same order to be able to reuse this wallet</p>
-    <h2 id = "theWords"></h2>
-  </div>
-  <div style = "margin-top: 20; visibility: hidden" id = "displayAddr" >
-    <h1>Your bitcoin address</h1>
-    <p>This is your bitcoin address used to receive bitcoins</p>
-    <h2 id = "theAddr"></h2>
+    <div class = "container">
+      <h1>Create your own wallet</h1>
+        <div class="form-group col-xs-6">
+            <label class="sr-only" for="email">Your Email address:</label>
+            <input type="email" class="form-control" id="email" placeholder="Email">
+        </div>
+        <button type="button" class="btn btn-primary" onclick="submit()">Get your Wallet</button>
+    </div>
+
+    <div class = "container" style = "visibility: hidden" id = "displayWords">
+      <h1>Your wallet</h1>
+      <h2>Your wallet's mnemonic</h2>
+      <p>These 12 words represent you wallet's private key. Please write them down carefully in the same order to be able to reuse this wallet</p>
+      <div class="panel panel-default">
+          <div class="panel-heading">The key words</div>
+          <div class="panel-body"><h3 id = "theWords"></h3></div>
+      </div>
+      <h2>Your bitcoin address</h2>
+      <p>This is your bitcoin address used to receive bitcoins</p>
+      <div class="panel panel-default">
+          <div class="panel-heading">Your first bitcoin address</div>
+          <div class="panel-body"><h3 id = "theAddr"></h3></div>
+      </div>
   </div>
 </BODY>
 </HTML>
