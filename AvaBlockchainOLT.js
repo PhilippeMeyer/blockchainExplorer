@@ -57,6 +57,11 @@ var app = express();
 app.use(bodyParser.json()); // support json encoded bodies
 app.use(bodyParser.urlencoded({ extended: true }));
 
+app.use("/res", express.static(__dirname + '/res'));
+app.use("/js", express.static(__dirname + '/js'));
+app.use("/css", express.static(__dirname + '/css'));
+app.use("/html", express.static(__dirname + '/html'));
+
 fetchBlocks();
 loadConfig();
 
@@ -67,13 +72,12 @@ app.get('/favicon.ico', function(req, out) {
 
 app.get('/', function(req, out) {
   console.log("root");
-  out.sendFile(path.join(__dirname + '/res/index.html'));
+  out.sendFile(path.join(__dirname + '/html/index.html'));
 });
 
 app.get('/:name', function(req, out) {
   console.log("root : " + req.params.name);
-  if (req.params.name == '') out.sendFile(path.join(__dirname + '/res/index.html'));
-  else out.sendFile(path.join(__dirname + '/res/' + req.params.name + '.html'));
+  out.sendFile(path.join(__dirname + req.params.name));
 });
 
 app.post('/post/createCourse', function(req, out) {
@@ -102,6 +106,9 @@ app.post('/post/distributeCoins', function(req, out) {
   // Pre-allocate the funds to the students, moving coins to specific address.
   // Later on the students will trigger a transaction to move those funds to their own addresses
   // The parameters received are the same as for the createCourse call with additionnally the courseID
+  //TODO: this functionnality should be disabled when the coins have already been distributed to prevent any double distribution
+  //The log of the coins which have been distributed will be added in the Config object and tested here. If the current course
+  //as already this attribute the distribution will be aborted.
   console.log("distributeCoins");
   params = req.body;
 
@@ -144,12 +151,25 @@ app.get('/getBlock/:num', function(req, out) {
   if (block == undefined) out.status(404).end();
   else out.status(200).json(block).end();
 });
-
+/*
 app.get('/res/:name', function(req, out) {
   name = req.params.name;
   console.log(name);
   out.sendFile(path.join(__dirname + '/res/' + name));
 });
+
+app.get('/js/:name', function(req, out) {
+  name = req.params.name;
+  console.log(name);
+  out.sendFile(path.join(__dirname + '/js/' + name));
+});
+
+app.get('/css/:name', function(req, out) {
+  name = req.params.name;
+  console.log(name);
+  out.sendFile(path.join(__dirname + '/css/' + name));
+});
+*/
 
 app.listen(PORT);
 

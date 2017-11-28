@@ -1,5 +1,13 @@
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
-<HEAD>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/bootstrap-theme.min.css">
+
   <TITLE>Avaloq Blockchain Online Course</TITLE>
   <style type="text/css">
     div.header {background-color:#004893;min-height:64px;z-index:4;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
@@ -16,9 +24,15 @@
     .evenrowcolor:hover { background-color:#ffffff; }
   </style>
 
+  <script src="/js/jquery-3.2.1.min.js"></script>
+  <script src="/js/bootstrap.min.js"></script>
+
+
   <script>
   var http;
   var CourseID = 0;
+  var CourseName, DateStart, DateEnd;
+  var CourseNameOk, DateStartOk, DateEndOk;
 
   function manageCourse(url, callback) {
     var start = document.getElementById("startDate"); //TODO: Validation checks on the date
@@ -98,7 +112,7 @@
     var cID = document.getElementById("cID");
     document.getElementById('distributeBtn').disabled = false;
     cID.textContent = String(res.courseID);
-  };
+  }
 
   function addRow() {
     var table = document.getElementById("studentsTable");
@@ -108,56 +122,91 @@
     line.insertCell(2).setAttribute("contenteditable", "true")
     //line.cells[2].setClassName('eMail');    //TODO: Change this as it does not work
     line.cells[0].focus();
-  };
+  }
+
+  function validateParams(field) {
+    if (field == CourseName && field.value != '') CourseNameOk = true;
+    else if (field == DateStart) DateStartOk = true;
+    else DateEndOk = true;
+
+    if (CourseNameOk && DateStartOk && DateEndOk) document.getElementById("courseBtn").disabled = false;
+  }
+
+  function myFunction() {
+    CourseName = document.getElementById("courseName");
+    DateStart = document.getElementById("startDate");
+    DateEnd = document.getElementById("endDate");
+    CourseNameOk= false;
+    DateStartOk = false;
+    DateEndOk = false;
+  }
   </script>
 
 </HEAD>
-<BODY BGCOLOR="FFFFFF">
-  <div class="header">
-        <img src="/res/avaloq-logo-white.png" style = "width:142; height:44; margin-top:10; margin-left:20" >
-        <img src="/res/bitcoin explorer.png" style = "height:44; margin-top:10; margin-right:20" align = "right">
-  </div>
+<BODY BGCOLOR="FFFFFF" onload="myFunction()">
+  <div class = "container">
+    <nav class=" nav navbar navbar-default navbar-static-top">
+      <div class="container">
+        <img src="/res/avaloq-logo-blue.png"  height="35" vspace="10" style="display: inline-block;">
+        <img src="/res/bitcoin explorer.png" height="35" vspace="10" hspace="50" align = "right">
+      </div>
+    </nav>
 
-  <div class="section">
-    <h1>Create a new course</h1>
-    <button type="button" onclick="createCourse()">Create New Course</button>
-    <button type="button" disabled onclick="distributeCoins()" id = "distributeBtn">Distribute Coins</button>
-  </div>
+    <div class="container">
+      <h1>Create a new course</h1>
+      <button type="button" class="btn btn-primary" disabled onclick="createCourse()" id = "courseBtn">Create New Course</button>
+      <button type="button" class="btn btn-primary" disabled onclick="distributeCoins()" id = "distributeBtn">Distribute Coins</button>
+    </div>
 
-  <div class="section">
-    <div class="section">
-      <h2>Course Parameters</h2>
-      <table style="margin: 20px 20px 20px 20px;">
-        <tr><td>Course name </td><td><input type="text" id="courseName" size=50/></td></tr>
-        <tr><td>Start Date </td><td><input type="date" id="startDate" size=10/></td><td>Course ID : </td><td id=cID></td></tr>
-        <tr><td>End Date </td><td><input type="date" id="endDate" size=10/></td></tr>
+    <div class="container">
+      <div class="container">
+        <h2>Course Parameters</h2>
+        <form>
+          <div class="form-group">
+            <div class = "col-sm-12"><label for="courseName">Course Name</label>
+            <input type="text" class="form-control" id="courseName" placeholder="Name of the course" onchange="validateParams(this)"></div>
+            <div class = "col-sm-6"><label for="startDate">Start Date</label>
+            <input type="date" class="form-control" id="startDate" onchange="validateParams(this)"></div>
+            <div class = "col-sm-6"><label for="endDate">End Date</label>
+            <input type="date" class="form-control" id="endDate" onchange="validateParams(this)"></div>
+            <div class = "col-sm-6"><label for="cID">Course ID</label>
+            <span class="form-control" id="cID"></div>
+          </div>
+        </form>
+      </div>
+      <div class= "container">
+        <h2>BITCOIN Information</h2>
+        <form>
+          <div class="form-group">
+            <div class = "col-sm-12"><label for="wip">Private Key</label>
+            <input type="text" class="form-control" id="wip" placeholder="List of words encrypting the private key"></div>
+            <div class = "col-sm-6"><label for="amount">Amount to distribute (in mBitcoins)</label>
+            <input type="number" class="form-control" id="amount"></div>
+            <div class = "col-sm-6"><label for="fees">Fees for the transfert (in satoshis/per byte)</label>
+            <input type="number" class="form-control" id="fees"></div>
+          </div>
+        </form>
+      </div>
+      <div class= "container">
+        <h2>STUDENTS Attending the course</h2>
+        <form>
+        <button type="button" class="btn btn-primary" onclick="addRow()" style="margin-top: 10; margin-left:50;">Add Student</button>
+        <div class="form-group">
+          <table id="studentsTable" class="table">
+            <tr><th>Firstname</th><th>LastName</th><th>eMail</th></tr>
+            <tr><td contenteditable="true"/><td contenteditable="true"/><td contenteditable="true" class="email"/></tr>
+          </table>
+        </div>
+      </form>
+      </div>
+    </div>
+
+    <div class = "container" style = "visibility: hidden" id = "displayTx">
+      <h2>Transactions recorded</h2>
+      <table id="txTable" class="table">
+        <tr><th>In or Out</th><th>Address</th><th>Amount</th><th>Tx Reference</th></tr>
       </table>
     </div>
-    <div class="section">
-      <h2>BITCOIN Information</h2>
-      <table>
-        <tr><td>Private Key : </td><td><input type="text" id="wip" size=80/></td></tr>
-        <tr><td>Amount to distribute (in mBitcoins) :</td><td><input type="number" id="amount" value="4"/></td></tr>
-        <tr><td>Fees for the transfert (in satoshis/per byte) :</td><td><input type="number" id="fees" value="160"/></td></tr>
-      </table>
-    </div>
-
-    <div class="section">
-      <span><b>STUDENTS Attending the course</b></span>
-      <button type="button" onclick="addRow()" style="margin-left:50;">Add Student</button>
-    </div>
-    <div style="margin: 20; height:33%; overflow-y: auto; border-width: 10;">
-      <table id="studentsTable" class="altrowstable">
-        <tr><th>Firstname</th><th>LastName</th><th>eMail</th></tr>
-        <tr><td contenteditable="true"/><td contenteditable="true"/><td contenteditable="true" class="email"/></tr>
-      </table>
-    </div>
-  </div>
-
-  <div style = "margin-top: 20; visibility: hidden" id = "displayTx">
-    <table id="txTable" class="altrowstable">
-      <tr><th>In or Out</th><th>Address</th><th>Amount</th><th>Tx Reference</th></tr>
-    </table>
   </div>
 </BODY>
 </HTML>

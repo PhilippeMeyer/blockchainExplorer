@@ -1,5 +1,13 @@
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
-<HEAD>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+  <link rel="stylesheet" href="css/bootstrap-theme.min.css">
+
   <TITLE>Avaloq Block Explorer</TITLE>
   <style type="text/css">
     .header {background-color:#004893;min-height:64px;z-index:4;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
@@ -13,7 +21,13 @@
     .evenrowcolor { background-color:#c3dde0; }
     .oddrowcolor:hover {	background-color:#ffffff;  }
     .evenrowcolor:hover { background-color:#ffffff; }
+
+    .navbar-container { padding-top: 8px; margin: 8px; }
+
   </style>
+
+  <script src="js/jquery-3.2.1.min.js"></script>
+  <script src="js/bootstrap.min.js"></script>
 
   <script>
   var nbLines = 10;
@@ -102,8 +116,6 @@
         res = JSON.parse(http.responseText);
         for (i = 0; (i < nbLines) && (i < res.length) ; i++) {
           var line = table.insertRow(-1);
-          if (i % 2 == 0) line.className = "evenRowColor";
-          else line.className = "oddRowColor";
 
           line.onclick = function (row) {
               return function () {
@@ -135,22 +147,26 @@
 
 </HEAD>
 <BODY BGCOLOR="FFFFFF" onload="myFunction()">
-  <div class="header">
-        <img src="res/avaloq-logo-white.png" style = "width:142; height:44; margin-top:10; margin-left:20" >
-        <img src="res/bitcoin explorer.png" style = "height:44; margin-top:10; margin-right:20" align = "right">
-  </div>
-  <div class = "section">
-    <H1> Last Mined Blocks </H1>
-    <table id="blockTable" class="altrowstable">
-      <tr><th># Block</th><th>Date</th><th>Nb Tx</th><th>Amount</th><th>Fees</th><th>Size</th><th>Hash</th></tr>
-    </table>
-  </div>
-  <div class = "section" style= "visibility: hidden" id = "displayTx">
-    <h1 id = "numBlock"></h1>
-    <table id="txTable" class="altrowstable">
-      <thead><th>Date</th><th>Transaction Id</th><th>Input</th><th>Output</th></thead>
-      <tbody id = "txList"></tbody>
-    </table>
+  <div class = "container">
+    <nav class=" nav navbar navbar-default navbar-static-top">
+      <div class="container">
+        <img src="res/avaloq-logo-blue.png"  height="35" vspace="10" style="display: inline-block;">
+        <img src="res/bitcoin explorer.png" height="35" vspace="10" hspace="50" align = "right">
+      </div>
+    </nav>
+    <div class = "container">
+      <H1> Last Mined Blocks </H1>
+      <table id="blockTable" class="table table-hover" style="cursor: pointer;">
+        <tr><th># Block</th><th>Date</th><th>Nb Tx</th><th>Amount</th><th>Fees</th><th>Size</th><th>Hash</th></tr>
+      </table>
+    </div>
+    <div class = "container" style= "visibility: hidden" id = "displayTx">
+      <h1 id = "numBlock"></h1>
+      <table id="txTable" class="table">
+        <thead><th>Date</th><th>Transaction Id</th><th>Input</th><th>Output</th></thead>
+        <tbody id = "txList"></tbody>
+      </table>
+    </div>
   </div>
 </BODY>
 </HTML>
