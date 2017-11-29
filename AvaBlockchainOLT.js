@@ -21,6 +21,7 @@ var CacheResults = [];            //Array of all the retrieved blocks
 const rootURL   = "http://blockchain.info/blocks?format=json";
 const blockURL  = 'http://blockchain.info/block/';
 const addrURL   = 'https://blockchain.info/fr/unspent?active=';
+const txAddrURL = 'https://blockchain.info/fr/rawaddr/';
 const ws        = 'wss://ws.blockchain.info/inv';
 const PORT      = process.env.PORT || 5000;
 const LINES     = 10;
@@ -155,6 +156,16 @@ app.get('/getBlock/:num', function(req, out) {
 
   if (block == undefined) out.status(404).end();
   else out.status(200).json(block).end();
+});
+
+app.get('/txAddress/:num', function(req, out) {
+  console.log("txAddress");
+
+  request(txAddrURL + req.params.num, { json: true }, (err, res, body) => {
+    if (err) { return console.log(err); }
+    //TODO proper HTML rendering of this information
+    out.status(200).render('transactions.ejs', {data: body});
+  });
 });
 
 app.post('/post/createWallet', function(req, out) {

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/bootstrap-theme.min.css">
+
+  <TITLE>Avaloq Block Explorer</TITLE>
+
+  <script src="/js/jquery-3.2.1.min.js"></script>
+  <script src="/js/bootstrap.min.js"></script>
+</head>
+<body>
+  <div class = "container">
+    <nav class=" nav navbar navbar-default navbar-static-top">
+      <div class="container">
+        <img src="/res/avaloq-logo-blue.png"  height="35" vspace="10" style="display: inline-block;">
+        <img src="/res/bitcoin explorer.png" height="35" vspace="10" hspace="50" align = "right">
+      </div>
+    </nav>
+
+    <div class = "container">
+      <h1>Information on address: <%= data.address %></h1>
+      <dl class="dl-horizontal">
+        <dt>Nb Transactions</dt>
+        <dd><%= data.n_tx %></dd>
+        <dt>Bitcoin received</dt>
+        <dd><%= data.total_received %></dd>
+        <dt>Bitcoin sent</dt>
+        <dd><%= data.total_sent %></dd>
+        <dt>Balance</dt>
+        <dd><%= data.final_balance %></dd>
+      </dl>
+      <table class = "table">
+      <% for(var i = 0; i < data.txs.length; i++) {%>
+        <tr>
+          <td><%= JSON.stringify(data.txs[i].time) %></td>
+          <td><%= JSON.stringify(data.txs[i].block_height) %></td>
+        </tr>
+      <% } %>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

@@ -9,28 +9,13 @@
   <link rel="stylesheet" href="css/bootstrap-theme.min.css">
 
   <TITLE>Avaloq Block Explorer</TITLE>
-  <style type="text/css">
-    .header {background-color:#004893;min-height:64px;z-index:4;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
-    .table {position: relative; min-height: 1px;  padding-left: 15px; padding-right: 15px;}
-    div.section {margin: 20px 20px 20px 20px; background-color:#f5f5f5; border-color:#736c6c; border-width: 1px; border-radius: 4px;}
-
-    table.altrowstable {margin: 20px 20px 20px 20px; font family: verdana,arial,sans-serif; font-size:16px; color:#333333;	border-width: 1px; border-color: #a9c6c9;	border-collapse: collapse; cursor: pointer;}
-    table.altrowstable th {	border-width: 1px; padding: 8px; border-style: solid; border-color: #a9c6c9; }
-    table.altrowstable td {	border-width: 1px; padding: 8px; border-style: solid;	border-color: #a9c6c9; }
-    .oddrowcolor {	background-color:#d4e3e5;  }
-    .evenrowcolor { background-color:#c3dde0; }
-    .oddrowcolor:hover {	background-color:#ffffff;  }
-    .evenrowcolor:hover { background-color:#ffffff; }
-
-    .navbar-container { padding-top: 8px; margin: 8px; }
-
-  </style>
 
   <script src="js/jquery-3.2.1.min.js"></script>
   <script src="js/bootstrap.min.js"></script>
 
   <script>
   var nbLines = 10;
+  var TxJson;
 
   function onRowClick(tableId, callback) {
       var table = document.getElementById(tableId),
@@ -51,8 +36,42 @@
   };
 
   function txCallback(row){
-      var value = row.getElementsByTagName("td")[0].textContent;
-      //TODO: Display the transaction details
+      var i;
+      var hash = row.getElementsByTagName("td")[1].textContent;
+      var table = document.getElementById("txDetail");
+      $("#txDetail tr").remove();
+
+      for (i = 0 ; i < TxJson.tx.length ; i++) { if (TxJson.tx[i].hash == hash) break; }
+      var lenInput = TxJson.tx[i].inputs.length;
+      var lenOutput = TxJson.tx[i].out.length;
+
+      for (var j = 0 ; j < lenInput ; j++) {
+        var line = table.insertRow(-1);
+        if (typeof TxJson.tx[i].inputs[j].prev_out != 'undefined') {
+            var addr = String(TxJson.tx[i].inputs[j].prev_out.addr);
+            line.insertCell(0).innerHTML = '<A href="/txAddress/' + addr + '" >' + addr + '</A>';
+            line.insertCell(1).textContent = String((TxJson.tx[i].inputs[j].prev_out.value/1E8).toFixed(2));
+        }
+        else {
+            line.insertCell(0).textContent = "No Address";
+            line.insertCell(1).textContent = "";
+        }
+
+      }
+      for (var j = 0 ; j < lenOutput ; j++) {
+        var line;
+        if (j >= lenInput) {
+          line = table.insertRow(-1);
+          line.insertCell(0).textContent = "";
+          line.insertCell(1).textContent = "";
+        }
+        else line = table.rows[j];
+        var addr = String(TxJson.tx[i].out[j].addr);
+        line.insertCell(2).innerHTML = '<A href="/txAddress/' + addr + '" >' + addr + '</A>';
+        line.insertCell(3).textContent = String((TxJson.tx[i].out[j].value/1E8).toFixed(2));
+      }
+
+      $("#txModal").modal('show');
   };
 
   function getBlock(index) {
@@ -64,6 +83,7 @@
       if (http.readyState == 4 && http.status == 200)
       {
         res = JSON.parse(http.responseText);
+        TxJson = res;
         var table = document.getElementById("txList");
         var div = document.getElementById('displayTx');
         var newTable = document.createElement('tbody');
@@ -71,8 +91,6 @@
         //We go through each transaction in the block
         for (var i = 0 ; i < res.tx.length ; i++) {
           var line = newTable.insertRow(-1);
-          if (i % 2 == 0) line.className = "evenRowColor";
-          else line.className = "oddRowColor";
 
           var date = new Date(res.tx[i].time*1000);
           var datestr = date.toISOString().replace(/T/, ' ').replace(/\..+/, '');
@@ -105,6 +123,17 @@
   }
 
   function myFunction() {
+    //Recreate the headers on the table so that the table is rendered properly
+    $('#txModal').on('shown.bs.modal', function (e) {
+      var table = document.getElementById("txDetail");
+      var header = table.createTHead();
+      var row = header.insertRow(0);
+      row.insertCell(0).textContent = "From";
+      row.insertCell(1).textContent = "Amount";
+      row.insertCell(2).textContent = "To";
+      row.insertCell(3).textContent = "Amount";
+    });
+
     var table = document.getElementById("blockTable");
     var http = new XMLHttpRequest();
 
@@ -162,11 +191,34 @@
     </div>
     <div class = "container" style= "visibility: hidden" id = "displayTx">
       <h1 id = "numBlock"></h1>
-      <table id="txTable" class="table">
+      <table id="txTable" class="table table-hover" style="cursor: pointer;">
         <thead><th>Date</th><th>Transaction Id</th><th>Input</th><th>Output</th></thead>
         <tbody id = "txList"></tbody>
       </table>
     </div>
   </div>
+
+  <!-- Modal window for transactions-->
+<div id="txModal" class="modal fade" role="dialog">
+  <div class="modal-dialog modal-lg">
+
+    <!-- Modal content-->
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Transaction detail</h4>
+      </div>
+      <div class="modal-body">
+        <table id="txDetail" class="table">
+          <tbody style = "font-size: 10px;"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+
+  </div>
+</div>
 </BODY>
 </HTML>
