@@ -51,7 +51,7 @@ client.on('connect', function(connection) {
     if (connection.connected) { connection.send(JSON.stringify({"op":"blocks_sub"}));}
 });
 
-client.connect(ws, null);
+//client.connect(ws, null);
 
 
 var app = express();
