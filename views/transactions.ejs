@@ -44,8 +44,12 @@
           <div class="panel-body">
             <div class = "container col-sm-4" style = "font-size: 12px;">
               <p><b>From</b></p>
-              <% for(var j = 0; j < data.txs[i].inputs.length; j++) {%>
-                <A href="/txAddress/<%= data.txs[i].inputs[j].prev_out.addr%>"><%=data.txs[i].inputs[j].prev_out.addr%></A>
+              <% for(var j = 0; j < data.txs[i].inputs.length; j++) {
+                if  (data.txs[i].inputs[j].prev_out.addr == data.address) {%>
+                  <A href="/txAddress/<%= data.txs[i].inputs[j].prev_out.addr%>" style= "background-color:#F0F0F0;"><%=data.txs[i].inputs[j].prev_out.addr%></A>
+                <% } else {%>
+                  <A href="/txAddress/<%= data.txs[i].inputs[j].prev_out.addr%>"><%=data.txs[i].inputs[j].prev_out.addr%></A>
+                <% } %>
                 <br>
               <% } %>
             </div>
@@ -60,8 +64,12 @@
             </div>
             <div class = "container col-sm-4" style = "font-size: 12px;">
               <p><b>To</b></p>
-              <% for(var j = 0; j < data.txs[i].out.length; j++) {%>
-                <A href="/txAddress/<%= data.txs[i].out[j].addr%>"><%=data.txs[i].out[j].addr%></A>
+              <% for(var j = 0; j < data.txs[i].out.length; j++) {
+                if  (data.txs[i].out[j].addr == data.address) {%>
+                  <A href="/txAddress/<%= data.txs[i].out[j].addr%>" style= "background-color:#F0F0F0;"><%=data.txs[i].out[j].addr%></A>
+                <% } else {%>
+                  <A href="/txAddress/<%= data.txs[i].out[j].addr%>"><%=data.txs[i].out[j].addr%></A>
+                <% } %>
               <% } %>
             </div>
             <div class = "container col-sm-1" style = "font-size: 12px;">
